@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(eza -la /Volumes/CORSAIR/Documents/rep_flex_count/repSetREMADE/.claude)",
+      "Bash(eza -la /Volumes/CORSAIR/Documents/rep_flex_count/repSetREMADE)",
+      "Bash(sips -g pixelWidth -g pixelHeight -g hasAlpha assets/sounds/images/repsetRemade.png)"
+    ]
+  }
+}
