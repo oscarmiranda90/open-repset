@@ -52,6 +52,13 @@ attribution and share-alike requirements before including or adapting the
 artwork in a shipped app. This is the recommended starting point when a fork
 needs open exercise illustrations.
 
+As an alternative, [Free Exercise DB](https://github.com/yuhonas/free-exercise-db)
+provides around 800 exercise records with images and is released under the
+Unlicense (public domain), so it carries no attribution or share-alike
+conditions. Both datasets expose the fields `Exercise` expects and can be
+converted into the `exercises.<locale>.json` shape and hosted on your own
+origin.
+
 Do not add user-data uploads or sync without an explicit privacy and security
 review. The complete policy is in [SECURITY.md](SECURITY.md).
 
