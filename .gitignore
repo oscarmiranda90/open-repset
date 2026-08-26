@@ -70,9 +70,9 @@ app.*.map.json
 /android/.kotlin/
 .vscode/
 
-# App Store deliverables and design iterations live with private operations,
-# not in the open-source app repository.
-screenshots/
+# App Store deliverables and design iterations live with private operations.
+# Public README screenshots that have passed the media review live under docs/.
+/screenshots/
 assets/images/[1-5].png
 ios/build/
 .agents/skills/brandkit/SKILL.md

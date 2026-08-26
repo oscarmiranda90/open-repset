@@ -71,10 +71,19 @@ review. The complete policy is in [SECURITY.md](SECURITY.md).
 
 ## Screens and product media
 
-The public source repository intentionally does not include App Store
-screenshots or Gym Visual exercise artwork. Those deliverables belong in the
-official store listing, and the exercise media is third-party copyrighted
-content. See [MEDIA_NOTICE.md](MEDIA_NOTICE.md) for the exact boundary.
+The public source repository does not include screenshots that contain Gym
+Visual exercise artwork. That media is third-party copyrighted content. See
+[MEDIA_NOTICE.md](MEDIA_NOTICE.md) for the exact boundary.
+
+The following official RepSet screenshots show features that are included in
+the public source. They contain no Gym Visual exercise media.
+
+<p align="center">
+  <img src="docs/screenshots/build-your-workout.jpg" width="23%" alt="RepSet home screen with workout builder and templates">
+  <img src="docs/screenshots/log-every-set.jpg" width="23%" alt="RepSet active workout set logger">
+  <img src="docs/screenshots/see-your-progress.jpg" width="23%" alt="RepSet muscle coverage and progress view">
+  <img src="docs/screenshots/own-every-workout.jpg" width="23%" alt="RepSet workout completion summary">
+</p>
 
 ## Run locally
 
