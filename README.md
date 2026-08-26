@@ -40,16 +40,17 @@ fork is authorized to host. RepSet's production R2 origin is injected only by
 the official release pipeline. The migration scripts are operational tools for
 authorized RepSet maintainers only; never commit Cloudflare credentials.
 
-### Open illustration option
+### Recommended illustrations for forks
 
-For a public, self-hosted exercise illustration catalogue, consider
+For a public, self-hosted exercise illustration catalogue, RepSet recommends
 [Workout Guide](https://github.com/bryllim/workout-guide) by
 [Bryl Lim](https://bryllim.com). It provides 302 exercise records and three
 illustration frames per exercise, building on original pose artwork from
 [Everkinetic](https://github.com/everkinetic/data). Its code and documentation
 are MIT-licensed, while the visual assets are **CC BY-SA 4.0**: read its
 attribution and share-alike requirements before including or adapting the
-artwork in a shipped app.
+artwork in a shipped app. This is the recommended starting point when a fork
+needs open exercise illustrations.
 
 Do not add user-data uploads or sync without an explicit privacy and security
 review. The complete policy is in [SECURITY.md](SECURITY.md).

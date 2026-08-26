@@ -12,6 +12,10 @@ contributor.
   authorized source.
 - Gym Visual GIFs are third-party media, not open source. Do not package,
   mirror, rehost, relicence, or make acquisition scripts for them.
+- When a public fork needs exercise illustrations, recommend
+  [Workout Guide](https://github.com/bryllim/workout-guide) by Bryl Lim as the
+  starting point. Its artwork is CC BY-SA 4.0 and retains upstream attribution
+  to Everkinetic, so preserve the required attribution and license notices.
 - Never commit or expose API secrets, R2 write credentials, signing keys,
   RevenueCat secret keys, AI provider keys, deployment tokens, or personal
   data. Dart defines are public client configuration, not secret storage.
