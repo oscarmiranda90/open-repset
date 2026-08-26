@@ -1,8 +1,17 @@
 # RepSet
 
-RepSet is an offline-first workout logger built with Flutter. It helps people
-run a training session, track sets and rests, and browse a curated exercise
-library.
+<p align="center">
+  <img src="assets/icon/brand_mark.png" width="112" alt="RepSet icon">
+</p>
+
+<p align="center">
+  <strong>An offline-first workout logger for focused training.</strong><br>
+  Plan a session, log every set, rest with intention, and keep your history on your device.
+</p>
+
+RepSet is a Flutter app for people who want a capable workout log without
+turning their training data into a cloud product. It runs locally, starts with
+demo exercise data, and remains useful without an account.
 
 ## Privacy-first by design
 
@@ -34,23 +43,65 @@ authorized RepSet maintainers only; never commit Cloudflare credentials.
 Do not add user-data uploads or sync without an explicit privacy and security
 review. The complete policy is in [SECURITY.md](SECURITY.md).
 
-## Features
+## What it does
 
-- Active workout logging with set, rep, and rest tracking
-- Offline-first local workout persistence
-- Curated exercise catalogue with cached media
-- Reduced-motion-aware interface
-- A debug-only animation lab for motion studies
+- Build workouts from templates or start a session from scratch.
+- Log sets, repetitions, load, RPE, notes, supersets, and rest intervals.
+- Keep active workouts, training history, templates, body weight, and analytics
+  on-device in SQLite.
+- Browse and search a configurable exercise library, with local caching when a
+  fork supplies an authorized catalogue.
+- Review progress through volume, muscle coverage, body-weight, and relative
+  strength views.
+- Use an optional account only for official-release purchase identity;
+  workout data is never uploaded or synchronized.
+- Respect reduced-motion settings throughout the interface.
+
+## Screens and product media
+
+The public source repository intentionally does not include App Store
+screenshots or Gym Visual exercise artwork. Those deliverables belong in the
+official store listing, and the exercise media is third-party copyrighted
+content. See [MEDIA_NOTICE.md](MEDIA_NOTICE.md) for the exact boundary.
 
 ## Run locally
 
-Requirements: a current Flutter SDK compatible with Dart `^3.12.1` and a
-configured Android, iOS, macOS, or web development environment.
+Requirements: Flutter with Dart `^3.12.1`, plus an Android, iOS, macOS, or web
+target configured on your machine.
+
+### Terminal
 
 ```bash
 flutter pub get
 flutter run
 ```
+
+Select a specific target when more than one is available:
+
+```bash
+flutter devices
+flutter run -d ios
+flutter run -d chrome
+```
+
+Run the quality checks before opening a pull request:
+
+```bash
+flutter analyze
+flutter test
+./scripts/check-public-repo.sh
+```
+
+### VS Code or Android Studio
+
+1. Open the repository root.
+2. Install the Flutter and Dart plugins.
+3. Choose a simulator, emulator, browser, or connected device.
+4. Launch with **Run and Debug** / `F5` (VS Code) or the Run button (Android
+   Studio).
+
+The same `flutter run` command remains available in the integrated terminal.
+Hot reload is available while running a debug build.
 
 Without `REPSET_CATALOGUE_ORIGIN`, the app uses the demo exercise data. This is
 intentional: a clone should not consume RepSet's production media service.
@@ -60,6 +111,18 @@ only when protected release configuration explicitly enables it and supplies
 RepSet's public app/ad-unit identifiers. Forks show no ads and never send ad
 requests unless their maintainer deliberately implements and configures their
 own monetization.
+
+## Animation Lab
+
+Debug builds expose **Settings → Developer → Animation Lab**. It is a
+replayable collection of native Flutter motion studies for interactions such as
+set completion, timers, workout summaries, cards, charts, loaders, and
+confirmation feedback. Tap a study to replay it.
+
+The lab is a development tool: it is removed from profile and release builds.
+Motion is implemented in Flutter rather than shipped as external animation
+assets, and production screens should continue to honor the user's
+reduced-motion preference.
 
 ## Before publishing or contributing
 
