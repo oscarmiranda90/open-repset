@@ -35,6 +35,16 @@ class SqliteExerciseStore {
     });
   }
 
+  /// Custom exercises are local-only and deliberately survive catalogue refreshes.
+  Future<void> saveCustom(String languageCode, Exercise exercise) async {
+    final database = await _database;
+    await database.insert(
+      'exercises',
+      _toRow(exercise, languageCode, DateTime.now().millisecondsSinceEpoch),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<void> setFavorite(
     String exerciseId, {
     required bool isFavorite,

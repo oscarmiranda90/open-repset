@@ -45,7 +45,10 @@ class BodyMapLoader {
 
   /// Containers that merely wrap other groups; shading them would flood the
   /// whole figure.
-  static const _containerIds = {'bodysvg', 'full_bodies', 'back'};
+  ///
+  /// `back` is deliberately absent: despite the name it carries the rear
+  /// view's lat paths, so treating it as a wrapper hid the entire back.
+  static const _containerIds = {'bodysvg', 'full_bodies'};
 
   static Future<BodyMapPaths> load({AssetBundle? bundle}) =>
       _pending ??= _parse(bundle ?? rootBundle);
@@ -70,7 +73,13 @@ class BodyMapLoader {
     final muscles = <MuscleGroup, Path>{};
     final silhouette = <Path>[];
 
-    for (final element in document.findAllElements('g')) {
+    // Named regions are not consistently groups: the body outline and the hair
+    // are bare `<path id="...">` elements, so scanning only `<g>` dropped the
+    // head and the base figure entirely.
+    for (final element in root.descendants.whereType<XmlElement>()) {
+      final name = element.name.local;
+      if (name != 'g' && name != 'path') continue;
+
       final id = element.getAttribute('id');
       if (id == null || _containerIds.contains(id)) continue;
 
@@ -79,13 +88,18 @@ class BodyMapLoader {
       if (group == null && !isSilhouette) continue;
 
       final combined = Path();
-      // `findElements` stays at the direct children so a nested group is not
-      // counted twice — once on its own and once inside its parent.
-      for (final pathElement in element.findAllElements('path')) {
-        final data = pathElement.getAttribute('d');
+      if (name == 'path') {
+        final data = element.getAttribute('d');
         if (data == null || data.isEmpty) continue;
         combined.addPath(parseSvgPath(data), Offset.zero);
+      } else {
+        for (final pathElement in element.findAllElements('path')) {
+          final data = pathElement.getAttribute('d');
+          if (data == null || data.isEmpty) continue;
+          combined.addPath(parseSvgPath(data), Offset.zero);
+        }
       }
+      if (combined.getBounds().isEmpty) continue;
 
       if (isSilhouette) {
         silhouette.add(combined);

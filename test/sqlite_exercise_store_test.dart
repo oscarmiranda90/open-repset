@@ -38,4 +38,43 @@ void main() {
       await (await database).close();
     },
   );
+
+  test('keeps custom exercises when the remote catalogue refreshes', () async {
+    final database = AppDatabase.open(path: inMemoryDatabasePath);
+    final store = SqliteExerciseStore(database);
+    const custom = Exercise(
+      id: 'custom-press',
+      name: 'Plate-loaded press',
+      bodyPart: 'Custom',
+      target: 'Chest',
+      equipment: 'Plate-loaded machine',
+      secondaryMuscles: [],
+      instructions: [],
+      isCustom: true,
+    );
+    const remote = Exercise(
+      id: 'row',
+      name: 'Cable row',
+      bodyPart: 'Upper body',
+      target: 'Back',
+      equipment: 'Cable',
+      secondaryMuscles: [],
+      instructions: [],
+    );
+
+    await store.saveCustom('en', custom);
+    await store.replaceRemote('en', const [remote]);
+
+    final saved = await store.read('en');
+    expect(
+      saved.map((exercise) => exercise.id),
+      containsAll(['custom-press', 'row']),
+    );
+    expect(
+      saved.singleWhere((exercise) => exercise.id == custom.id).isCustom,
+      isTrue,
+    );
+
+    await (await database).close();
+  });
 }

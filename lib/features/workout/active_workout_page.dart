@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:keyboard_actions/keyboard_actions.dart';
 
+import '../../core/account/max_access.dart';
+import '../../core/ads/official_ads_service.dart';
 import '../../core/motion/repset_motion.dart';
 import '../../domain/exercise.dart';
 import '../../domain/workout_repository.dart';
@@ -16,9 +19,10 @@ import 'workout_bloc.dart';
 import 'workout_elapsed_time.dart';
 
 class ActiveWorkoutPage extends StatelessWidget {
-  const ActiveWorkoutPage({this.onBack, super.key});
+  const ActiveWorkoutPage({this.onBack, this.adsService, super.key});
 
   final VoidCallback? onBack;
+  final OfficialAdsService? adsService;
 
   @override
   Widget build(BuildContext context) => BlocConsumer<WorkoutBloc, WorkoutState>(
@@ -35,78 +39,89 @@ class ActiveWorkoutPage extends StatelessWidget {
       final activeRestSetId = _latestCompletedSetId(session);
       return Material(
         color: Colors.transparent,
-        child: Stack(
-          children: [
-            CustomScrollView(
-              key: const Key('active-workout-page'),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  sliver: SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _WorkoutHeaderDelegate(
-                      session: session,
-                      onBack: onBack,
-                    ),
-                  ),
-                ),
-                if (session.exercises.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _EmptyWorkout(),
-                  )
-                else
+        child: KeyboardActions(
+          navigation: KeyboardNavigation.none,
+          theme: const KeyboardActionsThemeData(
+            barColor: Color(0xff202620),
+            foregroundColor: Color(0xffd7ff4f),
+            integratedBar: true,
+          ),
+          child: Stack(
+            children: [
+              CustomScrollView(
+                key: const Key('active-workout-page'),
+                slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 104),
-                    sliver: SliverReorderableList(
-                      itemCount: session.exercises.length,
-                      onReorderItem: (oldIndex, newIndex) {
-                        context.read<WorkoutBloc>().add(
-                          WorkoutExerciseMoved(
-                            entryId: session.exercises[oldIndex].id,
-                            toIndex: newIndex,
-                          ),
-                        );
-                      },
-                      itemBuilder: (context, index) => Padding(
-                        key: ValueKey('reorder-${session.exercises[index].id}'),
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _ExerciseCard(
-                          exercise: session.exercises[index],
-                          activeRestSetId: activeRestSetId,
-                          reorderIndex: index,
-                        ),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    sliver: SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _WorkoutHeaderDelegate(
+                        session: session,
+                        onBack: onBack,
+                        adsService: adsService,
                       ),
                     ),
                   ),
-              ],
-            ),
-            Positioned(
-              right: 18,
-              bottom: 12,
-              child: SafeArea(
-                minimum: const EdgeInsets.only(bottom: 6),
-                child: RepSetEntrance(
-                  child: RepSetPress(
-                    scale: .96,
-                    child: FloatingActionButton.extended(
-                      key: const Key('add-exercise-button'),
-                      heroTag: 'active-workout-add-exercise',
-                      onPressed: () => _pickExercise(context),
-                      backgroundColor: const Color(0xffd7ff4f),
-                      foregroundColor: const Color(0xff171914),
-                      elevation: 5,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text(
-                        'Add Exercise',
-                        style: TextStyle(fontWeight: FontWeight.w900),
+                  if (session.exercises.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _EmptyWorkout(),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 104),
+                      sliver: SliverReorderableList(
+                        itemCount: session.exercises.length,
+                        onReorderItem: (oldIndex, newIndex) {
+                          context.read<WorkoutBloc>().add(
+                            WorkoutExerciseMoved(
+                              entryId: session.exercises[oldIndex].id,
+                              toIndex: newIndex,
+                            ),
+                          );
+                        },
+                        itemBuilder: (context, index) => Padding(
+                          key: ValueKey(
+                            'reorder-${session.exercises[index].id}',
+                          ),
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _ExerciseCard(
+                            exercise: session.exercises[index],
+                            activeRestSetId: activeRestSetId,
+                            reorderIndex: index,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Positioned(
+                right: 18,
+                bottom: 12,
+                child: SafeArea(
+                  minimum: const EdgeInsets.only(bottom: 6),
+                  child: RepSetEntrance(
+                    child: RepSetPress(
+                      scale: .96,
+                      child: FloatingActionButton.extended(
+                        key: const Key('add-exercise-button'),
+                        heroTag: 'active-workout-add-exercise',
+                        onPressed: () => _pickExercise(context),
+                        backgroundColor: const Color(0xffd7ff4f),
+                        foregroundColor: const Color(0xff171914),
+                        elevation: 5,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text(
+                          'Add Exercise',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     },
@@ -131,13 +146,18 @@ class ActiveWorkoutPage extends StatelessWidget {
   }
 }
 
-enum _FinishWorkoutChoice { finish, saveTemplate }
+enum _FinishWorkoutChoice { finish, saveTemplate, discard }
 
 class _WorkoutHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _WorkoutHeaderDelegate({required this.session, required this.onBack});
+  _WorkoutHeaderDelegate({
+    required this.session,
+    required this.onBack,
+    required this.adsService,
+  });
 
   final WorkoutSession session;
   final VoidCallback? onBack;
+  final OfficialAdsService? adsService;
 
   @override
   double get minExtent => 64;
@@ -158,24 +178,29 @@ class _WorkoutHeaderDelegate extends SliverPersistentHeaderDelegate {
     return _WorkoutHeader(
       session: session,
       onBack: onBack,
+      adsService: adsService,
       collapseProgress: collapseProgress,
     );
   }
 
   @override
   bool shouldRebuild(covariant _WorkoutHeaderDelegate oldDelegate) =>
-      oldDelegate.session != session || oldDelegate.onBack != onBack;
+      oldDelegate.session != session ||
+      oldDelegate.onBack != onBack ||
+      oldDelegate.adsService != adsService;
 }
 
 class _WorkoutHeader extends StatelessWidget {
   const _WorkoutHeader({
     required this.session,
     required this.onBack,
+    required this.adsService,
     required this.collapseProgress,
   });
 
   final WorkoutSession session;
   final VoidCallback? onBack;
+  final OfficialAdsService? adsService;
   final double collapseProgress;
 
   @override
@@ -376,35 +401,29 @@ class _WorkoutHeader extends StatelessWidget {
     BuildContext context,
     WorkoutSession session,
   ) async {
-    final choice = await showDialog<_FinishWorkoutChoice>(
+    final choice = await showModalBottomSheet<_FinishWorkoutChoice>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Finish workout?'),
-        content: Text(
-          '${session.completedSetCount} completed sets and ${_formatLoad(session.volumeKg)} kg will be saved.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Keep training'),
-          ),
-          OutlinedButton(
-            key: const Key('confirm-finish-workout-button'),
-            onPressed: () =>
-                Navigator.pop(dialogContext, _FinishWorkoutChoice.finish),
-            child: const Text('Finish'),
-          ),
-          FilledButton.icon(
-            key: const Key('save-template-and-finish-button'),
-            onPressed: () =>
-                Navigator.pop(dialogContext, _FinishWorkoutChoice.saveTemplate),
-            icon: const Icon(Icons.bookmark_add_rounded),
-            label: const Text('Save template & finish'),
-          ),
-        ],
-      ),
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      sheetAnimationStyle: RepSetMotion.sheetAnimation,
+      builder: (_) => _FinishWorkoutSheet(session: session),
     );
     if (choice == null || !context.mounted) return;
+
+    if (choice == _FinishWorkoutChoice.discard) {
+      final shouldDiscard = await showModalBottomSheet<bool>(
+        context: context,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        sheetAnimationStyle: RepSetMotion.sheetAnimation,
+        builder: (_) => const _DiscardWorkoutSheet(),
+      );
+      if (shouldDiscard == true && context.mounted) {
+        context.read<WorkoutBloc>().add(const WorkoutDiscarded());
+      }
+      return;
+    }
 
     if (choice == _FinishWorkoutChoice.saveTemplate) {
       context.read<TemplateBloc>().add(TemplateSavedFromWorkout(session));
@@ -424,7 +443,309 @@ class _WorkoutHeader extends StatelessWidget {
     context.read<WorkoutBloc>().add(const WorkoutFinished());
 
     await showWorkoutSummarySheet(context, load: () => summary);
+    if (!context.mounted || adsService == null) return;
+
+    try {
+      final result = await summary;
+      if (!context.mounted) return;
+      // Persistence is asynchronous. If the bloc has not published the saved
+      // state yet, skip the ad instead of risking overlap with an active
+      // workout or delaying navigation to wait for monetization.
+      if (context.read<WorkoutBloc>().state.hasActiveSession) return;
+      final max = context.read<MaxAccessCubit>().state;
+      adsService!.maybeShowCompletedWorkoutInterstitial(
+        // The summary is calculated before this session is saved.
+        completedWorkoutCount: result.completedSessionCount + 1,
+        hasMaxAccess:
+            !adsService!.isTestMode &&
+            (!max.isAvailable || !max.hasResolved || max.isActive),
+      );
+    } catch (error) {
+      // A summary failure never turns into an ad or delays the saved workout.
+      debugPrint('Post-workout ad skipped: $error');
+    }
   }
+}
+
+class _FinishWorkoutSheet extends StatelessWidget {
+  const _FinishWorkoutSheet({required this.session});
+
+  final WorkoutSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      decoration: BoxDecoration(
+        color: const Color(0xff202620),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xff3a463a)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xaa091009),
+            blurRadius: 32,
+            offset: Offset(0, -8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xff687468),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xffd7ff4f),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Color(0xff171914),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Finish workout',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -.8,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Lock in today\'s work and view your recap.',
+                      style: TextStyle(color: muted),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: muted,
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
+                child: const Text('Not yet'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: const Color(0xff171d18),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                _FinishMetric(
+                  label: 'SETS',
+                  value: '${session.completedSetCount}',
+                ),
+                const SizedBox(width: 18),
+                _FinishMetric(
+                  label: 'VOLUME',
+                  value: '${_formatLoad(session.volumeKg)} kg',
+                ),
+                const Spacer(),
+                _FinishMetric(
+                  label: 'TIME',
+                  value: _formatDuration(
+                    DateTime.now().difference(session.startedAt).inSeconds,
+                  ),
+                  alignEnd: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              key: const Key('confirm-finish-workout-button'),
+              onPressed: () =>
+                  Navigator.pop(context, _FinishWorkoutChoice.finish),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xffd7ff4f),
+                foregroundColor: const Color(0xff171914),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text(
+                'Finish & view recap',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            key: const Key('save-template-and-finish-button'),
+            onPressed: () =>
+                Navigator.pop(context, _FinishWorkoutChoice.saveTemplate),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 50),
+              foregroundColor: const Color(0xffeef5e9),
+              side: const BorderSide(color: Color(0xff465246)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.bookmark_add_outlined, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Save as template, then finish',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            key: const Key('discard-workout-button'),
+            onPressed: () =>
+                Navigator.pop(context, _FinishWorkoutChoice.discard),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Cancel workout and discard everything'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FinishMetric extends StatelessWidget {
+  const _FinishMetric({
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+  });
+
+  final String label;
+  final String value;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: alignEnd
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xff93a093),
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
+        ),
+      ),
+      const SizedBox(height: 3),
+      Text(
+        value,
+        style: const TextStyle(
+          color: Color(0xfff0f5ed),
+          fontSize: 15,
+          fontWeight: FontWeight.w900,
+          fontFeatures: [FontFeature.tabularFigures()],
+        ),
+      ),
+    ],
+  );
+}
+
+class _DiscardWorkoutSheet extends StatelessWidget {
+  const _DiscardWorkoutSheet();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+    decoration: BoxDecoration(
+      color: const Color(0xff29201d),
+      borderRadius: BorderRadius.circular(28),
+      border: Border.all(color: const Color(0xff5a3931)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 38,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xff8f7068),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        const Text(
+          'Discard this workout?',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 7),
+        const Text(
+          'Exercises, sets, and logged results will be deleted from this device. This can\'t be undone.',
+          style: TextStyle(color: Color(0xffccb8b0), height: 1.35),
+        ),
+        const SizedBox(height: 22),
+        SizedBox(
+          height: 50,
+          child: FilledButton(
+            key: const Key('confirm-discard-workout-button'),
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xffdf725c),
+              foregroundColor: const Color(0xff24110d),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text(
+              'Discard workout',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Keep workout'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _RenameWorkoutSheet extends StatefulWidget {
@@ -1243,7 +1564,7 @@ class _HeaderLabel extends StatelessWidget {
   );
 }
 
-class _SetRow extends StatelessWidget {
+class _SetRow extends StatefulWidget {
   const _SetRow({
     required this.exercise,
     required this.set,
@@ -1265,10 +1586,25 @@ class _SetRow extends StatelessWidget {
   final VoidCallback onRestDurationTap;
 
   @override
+  State<_SetRow> createState() => _SetRowState();
+}
+
+class _SetRowState extends State<_SetRow> {
+  final FocusNode _loadFocusNode = FocusNode();
+  final FocusNode _repsFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _loadFocusNode.dispose();
+    _repsFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => BlocListener<WorkoutBloc, WorkoutState>(
     listenWhen: (previous, current) =>
         previous.focusSequence != current.focusSequence &&
-        current.focusedSetId == set.id,
+        current.focusedSetId == widget.set.id,
     listener: (context, state) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
@@ -1278,10 +1614,11 @@ class _SetRow extends StatelessWidget {
           curve: Curves.easeOutCubic,
           alignment: .28,
         );
+        _loadFocusNode.requestFocus();
       });
     },
     child: RepSetFoldIn(
-      key: ValueKey('set-entry-${set.id}'),
+      key: ValueKey('set-entry-${widget.set.id}'),
       child: Column(
         children: [
           Row(
@@ -1296,17 +1633,17 @@ class _SetRow extends StatelessWidget {
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     key: Key(
-                      'workout-set-row-${exercise.position}-${set.position}',
+                      'workout-set-row-${widget.exercise.position}-${widget.set.position}',
                     ),
                     onTap: () => _pickRpe(context),
                     onLongPress: () => _editSet(context),
                     child: Center(
                       child: Text(
-                        set.type == WorkoutSetType.warmup
+                        widget.set.type == WorkoutSetType.warmup
                             ? 'W'
-                            : '${set.position + 1}',
+                            : '${widget.set.position + 1}',
                         style: TextStyle(
-                          color: set.type == WorkoutSetType.warmup
+                          color: widget.set.type == WorkoutSetType.warmup
                               ? const Color(0xffd7ff4f)
                               : Colors.white,
                           fontSize: 16,
@@ -1321,21 +1658,23 @@ class _SetRow extends StatelessWidget {
               Expanded(
                 flex: 4,
                 child: SizedBox(
-                  key: Key('set-previous-${exercise.position}-${set.position}'),
+                  key: Key(
+                    'set-previous-${widget.exercise.position}-${widget.set.position}',
+                  ),
                   height: 40,
                   child: Center(
                     child: Text(
-                      previous == null ||
-                              (inheritedLoadKg == null &&
-                                  inheritedRepetitions == null)
+                      widget.previous == null ||
+                              (widget.inheritedLoadKg == null &&
+                                  widget.inheritedRepetitions == null)
                           ? '—'
-                          : '${_formatLoad(_displayLoad(inheritedLoadKg ?? 0, exercise.weightUnit))} ${exercise.weightUnit.label} × ${inheritedRepetitions ?? 0}',
+                          : '${_formatLoad(_displayLoad(widget.inheritedLoadKg ?? 0, widget.exercise.weightUnit))} ${widget.exercise.weightUnit.label} × ${widget.inheritedRepetitions ?? 0}',
                       maxLines: 1,
                       overflow: TextOverflow.fade,
                       softWrap: false,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: previous == null
+                        color: widget.previous == null
                             ? Theme.of(context).colorScheme.onSurfaceVariant
                             : Colors.white,
                         fontSize: 13,
@@ -1349,22 +1688,34 @@ class _SetRow extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: _InlineSetField(
-                  key: Key('set-load-${exercise.position}-${set.position}'),
-                  value: set.loadKg == 0
+                  key: Key(
+                    'set-load-${widget.exercise.position}-${widget.set.position}',
+                  ),
+                  focusNode: _loadFocusNode,
+                  value: widget.set.loadKg == 0
                       ? ''
                       : _formatLoad(
-                          _displayLoad(set.loadKg, exercise.weightUnit),
+                          _displayLoad(
+                            widget.set.loadKg,
+                            widget.exercise.weightUnit,
+                          ),
                         ),
-                  hint: inheritedLoadKg == null
+                  hint: widget.inheritedLoadKg == null
                       ? '0'
                       : _formatLoad(
-                          _displayLoad(inheritedLoadKg!, exercise.weightUnit),
+                          _displayLoad(
+                            widget.inheritedLoadKg!,
+                            widget.exercise.weightUnit,
+                          ),
                         ),
                   decimal: true,
-                  semanticsLabel: 'Weight in ${exercise.weightUnit.label}',
+                  semanticsLabel:
+                      'Weight in ${widget.exercise.weightUnit.label}',
                   onCommit: (value) {
                     if (value.isEmpty) {
-                      if (set.loadKg != 0) _updateSet(context, loadKg: 0);
+                      if (widget.set.loadKg != 0) {
+                        _updateSet(context, loadKg: 0);
+                      }
                       return;
                     }
                     final displayLoad = double.tryParse(
@@ -1373,41 +1724,49 @@ class _SetRow extends StatelessWidget {
                     if (displayLoad == null) return;
                     final loadKg = _loadInKilograms(
                       displayLoad,
-                      exercise.weightUnit,
+                      widget.exercise.weightUnit,
                     );
-                    if (loadKg == set.loadKg) return;
+                    if (loadKg == widget.set.loadKg) return;
                     _updateSet(context, loadKg: loadKg);
                   },
+                  onSubmitted: _repsFocusNode.requestFocus,
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
                 flex: 3,
                 child: _RepsWithRpe(
-                  exercise: exercise,
-                  set: set,
-                  inheritedRepetitions: inheritedRepetitions,
+                  exercise: widget.exercise,
+                  set: widget.set,
+                  inheritedRepetitions: widget.inheritedRepetitions,
+                  focusNode: _repsFocusNode,
                   onCommit: (value) {
                     if (value.isEmpty) {
-                      if (set.repetitions != 0) {
+                      if (widget.set.repetitions != 0) {
                         _updateSet(context, repetitions: 0);
                       }
                       return;
                     }
                     final repetitions = int.tryParse(value);
-                    if (repetitions == null || repetitions == set.repetitions) {
+                    if (repetitions == null ||
+                        repetitions == widget.set.repetitions) {
                       return;
                     }
                     _updateSet(context, repetitions: repetitions);
                   },
+                  onSubmitted: () => _completeSet(context),
                 ),
               ),
               SizedBox(
                 width: 40,
                 height: 40,
                 child: IconButton(
-                  key: Key('complete-set-${exercise.position}-${set.position}'),
-                  tooltip: set.isCompleted ? 'Mark incomplete' : 'Complete set',
+                  key: Key(
+                    'complete-set-${widget.exercise.position}-${widget.set.position}',
+                  ),
+                  tooltip: widget.set.isCompleted
+                      ? 'Mark incomplete'
+                      : 'Complete set',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints.tightFor(
                     width: 40,
@@ -1415,10 +1774,10 @@ class _SetRow extends StatelessWidget {
                   ),
                   onPressed: () => context.read<WorkoutBloc>().add(
                     WorkoutSetCompletionToggled(
-                      entryId: exercise.id,
-                      setId: set.id,
-                      inheritedRepetitions: inheritedRepetitions,
-                      inheritedLoadKg: inheritedLoadKg,
+                      entryId: widget.exercise.id,
+                      setId: widget.set.id,
+                      inheritedRepetitions: widget.inheritedRepetitions,
+                      inheritedLoadKg: widget.inheritedLoadKg,
                     ),
                   ),
                   icon: AnimatedSwitcher(
@@ -1431,11 +1790,11 @@ class _SetRow extends StatelessWidget {
                       child: child,
                     ),
                     child: Icon(
-                      set.isCompleted
+                      widget.set.isCompleted
                           ? Icons.check_circle_rounded
                           : Icons.check_rounded,
-                      key: ValueKey(set.isCompleted),
-                      color: set.isCompleted
+                      key: ValueKey(widget.set.isCompleted),
+                      color: widget.set.isCompleted
                           ? const Color(0xffd7ff4f)
                           : Colors.white,
                     ),
@@ -1444,28 +1803,42 @@ class _SetRow extends StatelessWidget {
               ),
             ],
           ),
-          if (showRestRail)
+          if (widget.showRestRail)
             RestCountdownRail(
-              key: Key('rest-timer-${exercise.position}-${set.position}'),
-              durationSeconds: exercise.restSeconds,
-              startedAt: restStartedAt,
-              onDurationTap: onRestDurationTap,
+              key: Key(
+                'rest-timer-${widget.exercise.position}-${widget.set.position}',
+              ),
+              durationSeconds: widget.exercise.restSeconds,
+              startedAt: widget.restStartedAt,
+              onDurationTap: widget.onRestDurationTap,
             ),
         ],
       ),
     ),
   );
 
+  void _completeSet(BuildContext context) {
+    if (widget.set.isCompleted) return;
+    context.read<WorkoutBloc>().add(
+      WorkoutSetCompletionToggled(
+        entryId: widget.exercise.id,
+        setId: widget.set.id,
+        inheritedRepetitions: widget.inheritedRepetitions,
+        inheritedLoadKg: widget.inheritedLoadKg,
+      ),
+    );
+  }
+
   void _updateSet(BuildContext context, {double? loadKg, int? repetitions}) {
     context.read<WorkoutBloc>().add(
       WorkoutSetUpdated(
-        entryId: exercise.id,
-        setId: set.id,
-        repetitions: repetitions ?? set.repetitions,
-        loadKg: loadKg ?? set.loadKg,
-        rpe: set.rpe,
-        notes: set.notes,
-        type: set.type,
+        entryId: widget.exercise.id,
+        setId: widget.set.id,
+        repetitions: repetitions ?? widget.set.repetitions,
+        loadKg: loadKg ?? widget.set.loadKg,
+        rpe: widget.set.rpe,
+        notes: widget.set.notes,
+        type: widget.set.type,
       ),
     );
   }
@@ -1476,20 +1849,22 @@ class _SetRow extends StatelessWidget {
       isScrollControlled: true,
       useSafeArea: true,
       sheetAnimationStyle: RepSetMotion.sheetAnimation,
-      builder: (_) =>
-          _SetEditorSheet(set: set, weightUnit: exercise.weightUnit),
+      builder: (_) => _SetEditorSheet(
+        set: widget.set,
+        weightUnit: widget.exercise.weightUnit,
+      ),
     );
     if (draft == null || !context.mounted) return;
     if (draft.remove) {
       context.read<WorkoutBloc>().add(
-        WorkoutSetRemoved(entryId: exercise.id, setId: set.id),
+        WorkoutSetRemoved(entryId: widget.exercise.id, setId: widget.set.id),
       );
       return;
     }
     context.read<WorkoutBloc>().add(
       WorkoutSetUpdated(
-        entryId: exercise.id,
-        setId: set.id,
+        entryId: widget.exercise.id,
+        setId: widget.set.id,
         repetitions: draft.repetitions,
         loadKg: draft.loadKg,
         rpe: draft.rpe,
@@ -1504,7 +1879,7 @@ class _SetRow extends StatelessWidget {
       context: context,
       useSafeArea: true,
       sheetAnimationStyle: RepSetMotion.sheetAnimation,
-      builder: (_) => _RpePickerSheet(selectedRpe: set.rpe),
+      builder: (_) => _RpePickerSheet(selectedRpe: widget.set.rpe),
     );
     if (selection == null || !context.mounted) return;
     final currentSet = context
@@ -1512,20 +1887,20 @@ class _SetRow extends StatelessWidget {
         .state
         .session
         ?.exercises
-        .where((entry) => entry.id == exercise.id)
+        .where((entry) => entry.id == widget.exercise.id)
         .firstOrNull
         ?.sets
-        .where((entry) => entry.id == set.id)
+        .where((entry) => entry.id == widget.set.id)
         .firstOrNull;
     context.read<WorkoutBloc>().add(
       WorkoutSetUpdated(
-        entryId: exercise.id,
-        setId: set.id,
-        repetitions: currentSet?.repetitions ?? set.repetitions,
-        loadKg: currentSet?.loadKg ?? set.loadKg,
+        entryId: widget.exercise.id,
+        setId: widget.set.id,
+        repetitions: currentSet?.repetitions ?? widget.set.repetitions,
+        loadKg: currentSet?.loadKg ?? widget.set.loadKg,
         rpe: selection.value,
-        notes: currentSet?.notes ?? set.notes,
-        type: currentSet?.type ?? set.type,
+        notes: currentSet?.notes ?? widget.set.notes,
+        type: currentSet?.type ?? widget.set.type,
       ),
     );
   }
@@ -1608,12 +1983,16 @@ class _RepsWithRpe extends StatelessWidget {
     required this.set,
     required this.inheritedRepetitions,
     required this.onCommit,
+    required this.focusNode,
+    required this.onSubmitted,
   });
 
   final WorkoutExercise exercise;
   final WorkoutSet set;
   final int? inheritedRepetitions;
   final ValueChanged<String> onCommit;
+  final FocusNode focusNode;
+  final VoidCallback onSubmitted;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -1629,6 +2008,8 @@ class _RepsWithRpe extends StatelessWidget {
             hint: inheritedRepetitions?.toString() ?? '0',
             semanticsLabel: 'Repetitions',
             onCommit: onCommit,
+            focusNode: focusNode,
+            onSubmitted: onSubmitted,
           ),
         ),
         Positioned(
@@ -1695,6 +2076,8 @@ class _InlineSetField extends StatefulWidget {
     required this.hint,
     required this.semanticsLabel,
     required this.onCommit,
+    this.focusNode,
+    this.onSubmitted,
     this.decimal = false,
     super.key,
   });
@@ -1703,6 +2086,8 @@ class _InlineSetField extends StatefulWidget {
   final String hint;
   final String semanticsLabel;
   final ValueChanged<String> onCommit;
+  final FocusNode? focusNode;
+  final VoidCallback? onSubmitted;
   final bool decimal;
 
   @override
@@ -1713,7 +2098,8 @@ class _InlineSetFieldState extends State<_InlineSetField> {
   late final TextEditingController _controller = TextEditingController(
     text: widget.value,
   );
-  final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode = widget.focusNode ?? FocusNode();
+  bool get _ownsFocusNode => widget.focusNode == null;
 
   @override
   void initState() {
@@ -1736,51 +2122,75 @@ class _InlineSetFieldState extends State<_InlineSetField> {
   @override
   void dispose() {
     _focusNode.removeListener(_handleFocus);
-    _focusNode.dispose();
+    if (_ownsFocusNode) _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: widget.semanticsLabel,
-    textField: true,
-    child: TextField(
-      controller: _controller,
-      focusNode: _focusNode,
-      textAlign: TextAlign.center,
-      keyboardType: TextInputType.numberWithOptions(decimal: widget.decimal),
-      inputFormatters: [
-        if (widget.decimal)
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
-        else
-          FilteringTextInputFormatter.digitsOnly,
-      ],
-      onSubmitted: (_) => widget.onCommit(_controller.text.trim()),
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-        fontWeight: FontWeight.w800,
-      ),
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        hintStyle: const TextStyle(color: Color(0xff69706c)),
-        filled: true,
-        fillColor: const Color(0xff1a211d),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
-        constraints: const BoxConstraints.tightFor(height: 40),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+  Widget build(BuildContext context) => KeyboardField(
+    focusNode: _focusNode,
+    showArrows: false,
+    showDone: false,
+    toolbarButtons: [
+      (_) => TextButton(
+        key: Key('keyboard-next-${widget.key}'),
+        onPressed: _submit,
+        child: const Text(
+          'Next',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xffd7ff4f), width: 1.5),
+      ),
+    ],
+    child: Semantics(
+      label: widget.semanticsLabel,
+      textField: true,
+      child: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.numberWithOptions(decimal: widget.decimal),
+        inputFormatters: [
+          if (widget.decimal)
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))
+          else
+            FilteringTextInputFormatter.digitsOnly,
+        ],
+        textInputAction: TextInputAction.next,
+        onSubmitted: (_) => _submit(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+        decoration: InputDecoration(
+          hintText: widget.hint,
+          hintStyle: const TextStyle(color: Color(0xff69706c)),
+          filled: true,
+          fillColor: const Color(0xff1a211d),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 3,
+            vertical: 6,
+          ),
+          constraints: const BoxConstraints.tightFor(height: 40),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xffd7ff4f), width: 1.5),
+          ),
         ),
       ),
     ),
   );
+
+  void _submit() {
+    widget.onCommit(_controller.text.trim());
+    widget.onSubmitted?.call();
+  }
 }
 
 class _RestDurationSheet extends StatefulWidget {
@@ -2125,6 +2535,7 @@ class _ExercisePickerSheet extends StatefulWidget {
 class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
   String _query = '';
   final Set<String> _selectedIds = {};
+  final List<Exercise> _createdExercises = [];
   String? _selectedTarget;
   String? _selectedEquipment;
 
@@ -2132,7 +2543,11 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
   Widget build(BuildContext context) {
     final library = context.watch<LibraryBloc>().state;
     final normalized = _query.trim().toLowerCase();
-    final exercises = library.exercises
+    final allExercises = <String, Exercise>{
+      for (final exercise in library.exercises) exercise.id: exercise,
+      for (final exercise in _createdExercises) exercise.id: exercise,
+    }.values.toList(growable: false);
+    final exercises = allExercises
         .where(
           (exercise) =>
               (_selectedTarget == null || exercise.target == _selectedTarget) &&
@@ -2144,7 +2559,7 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                   exercise.equipment.toLowerCase().contains(normalized)),
         )
         .toList(growable: false);
-    final selected = library.exercises
+    final selected = allExercises
         .where((exercise) => _selectedIds.contains(exercise.id))
         .toList(growable: false);
     return SizedBox(
@@ -2184,19 +2599,52 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                     const SizedBox(width: 4),
                     Expanded(
                       flex: 2,
-                      child: OutlinedButton.icon(
-                        key: const Key('picker-add-superset'),
-                        onPressed: selected.length == 2
-                            ? () => Navigator.pop(
-                                context,
-                                _ExerciseSelection(selected, asSuperset: true),
-                              )
-                            : null,
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: const Icon(Icons.link_rounded, size: 16),
-                        label: const Text('Superset'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              key: const Key('create-custom-exercise-button'),
+                              onPressed: _createCustomExercise,
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xffd7ff4f),
+                                minimumSize: const Size(0, 28),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              child: const Text(
+                                'New',
+                                style: TextStyle(fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          OutlinedButton.icon(
+                            key: const Key('picker-add-superset'),
+                            onPressed: selected.length == 2
+                                ? () => Navigator.pop(
+                                    context,
+                                    _ExerciseSelection(
+                                      selected,
+                                      asSuperset: true,
+                                    ),
+                                  )
+                                : null,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 34),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: const Icon(Icons.link_rounded, size: 16),
+                            label: const Text('Superset'),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -2337,6 +2785,39 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
     if (!mounted) return;
     onSelected(value);
   }
+
+  Future<void> _createCustomExercise() async {
+    final library = context.read<LibraryBloc>().state;
+    final bodyParts =
+        library.exercises
+            .map((exercise) => exercise.bodyPart)
+            .where((value) => value.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final exercise = await showModalBottomSheet<Exercise>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      sheetAnimationStyle: RepSetMotion.sheetAnimation,
+      builder: (_) => _CreateCustomExerciseSheet(
+        bodyParts: bodyParts,
+        targets: library.targets,
+        equipment: library.equipment,
+      ),
+    );
+    if (exercise == null || !mounted) return;
+
+    context.read<LibraryBloc>().add(LibraryCustomExerciseCreated(exercise));
+    setState(() {
+      _createdExercises.removeWhere((item) => item.id == exercise.id);
+      _createdExercises.add(exercise);
+      _selectedIds.add(exercise.id);
+      _query = exercise.name;
+      _selectedTarget = null;
+      _selectedEquipment = null;
+    });
+  }
 }
 
 class _ExerciseSelection {
@@ -2344,6 +2825,167 @@ class _ExerciseSelection {
 
   final List<Exercise> exercises;
   final bool asSuperset;
+}
+
+class _CreateCustomExerciseSheet extends StatefulWidget {
+  const _CreateCustomExerciseSheet({
+    required this.bodyParts,
+    required this.targets,
+    required this.equipment,
+  });
+
+  final List<String> bodyParts;
+  final List<String> targets;
+  final List<String> equipment;
+
+  @override
+  State<_CreateCustomExerciseSheet> createState() =>
+      _CreateCustomExerciseSheetState();
+}
+
+class _CreateCustomExerciseSheetState
+    extends State<_CreateCustomExerciseSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  String? _bodyPart;
+  String? _target;
+  String? _equipment;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    final name = _nameController.text.trim();
+    Navigator.pop(
+      context,
+      Exercise(
+        id: 'custom-${DateTime.now().microsecondsSinceEpoch}',
+        name: name,
+        bodyPart: _bodyPart!,
+        target: _target!,
+        equipment: _equipment!,
+        secondaryMuscles: const [],
+        instructions: const [],
+        isCustom: true,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(
+      20,
+      20,
+      20,
+      MediaQuery.viewInsetsOf(context).bottom + 20,
+    ),
+    child: SingleChildScrollView(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Create exercise',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Create the movement, then classify it using your existing library categories.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextFormField(
+              key: const Key('custom-exercise-name-field'),
+              controller: _nameController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Exercise name',
+                hintText: 'e.g. Hammer Strength incline press',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Enter an exercise name.'
+                  : null,
+              onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: const Key('custom-exercise-category-field'),
+              initialValue: _bodyPart,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+              ),
+              items: widget.bodyParts
+                  .map(
+                    (value) =>
+                        DropdownMenuItem(value: value, child: Text(value)),
+                  )
+                  .toList(growable: false),
+              validator: (value) => value == null ? 'Choose a category.' : null,
+              onChanged: (value) => setState(() => _bodyPart = value),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: const Key('custom-exercise-target-field'),
+              initialValue: _target,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Primary muscle',
+                border: OutlineInputBorder(),
+              ),
+              items: widget.targets
+                  .map(
+                    (value) =>
+                        DropdownMenuItem(value: value, child: Text(value)),
+                  )
+                  .toList(growable: false),
+              validator: (value) => value == null ? 'Choose a muscle.' : null,
+              onChanged: (value) => setState(() => _target = value),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: const Key('custom-exercise-equipment-field'),
+              initialValue: _equipment,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Machine or equipment',
+                border: OutlineInputBorder(),
+              ),
+              items: widget.equipment
+                  .map(
+                    (value) =>
+                        DropdownMenuItem(value: value, child: Text(value)),
+                  )
+                  .toList(growable: false),
+              validator: (value) => value == null ? 'Choose equipment.' : null,
+              onChanged: (value) => setState(() => _equipment = value),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              key: const Key('save-custom-exercise-button'),
+              onPressed: _save,
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Create & select'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PickerFilterButton extends StatelessWidget {

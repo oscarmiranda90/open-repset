@@ -65,16 +65,18 @@ Acceptance: calculations are deterministic and derived only from completed sessi
 
 ## Phase 6: Authentication and sync
 
-- Guest mode, email authentication, Apple/Google sign-in, and account linking.
+- Local-first guest mode plus optional Google and Apple sign-in.
+- No email/password, workout sync, or backup is included in this phase.
 - Any future sync must use an idempotent SQLite outbox, retry state, tombstones, and revisions.
 - Restore a user backup onto a clean installation.
-- Account deletion and local-data deletion.
+- Account deletion request flow and local-data deletion before production
+  availability.
 
 Acceptance: logging never waits on a network service, and reinstall recovery does not duplicate sessions.
 
 ## Phase 7: RevenueCat
 
-- Identify RevenueCat with a privacy-preserving app user identifier.
+- Identify RevenueCat with the Firebase UID after Google/Apple sign-in.
 - One `Premium` entitlement, offerings, purchase, restore, and entitlement refresh.
 - Keep core workout logging free. Gate only genuinely costly or advanced features.
 

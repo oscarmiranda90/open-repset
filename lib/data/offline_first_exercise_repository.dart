@@ -20,6 +20,10 @@ class OfflineFirstExerciseRepository implements ExerciseRepository {
   }
 
   @override
+  Future<void> saveCustom(String languageCode, Exercise exercise) =>
+      _local.saveCustom(languageCode, exercise);
+
+  @override
   Future<void> setFavorite(String exerciseId, {required bool isFavorite}) =>
       _local.setFavorite(exerciseId, isFavorite: isFavorite);
 }

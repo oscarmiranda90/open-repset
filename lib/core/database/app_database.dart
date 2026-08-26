@@ -6,7 +6,7 @@ class AppDatabase {
 
   static Future<Database> open({String? path}) async => openDatabase(
     path ?? join(await getDatabasesPath(), 'repset.db'),
-    version: 8,
+    version: 9,
     onConfigure: (database) => database.execute('PRAGMA foreign_keys = ON'),
     onCreate: (database, _) async {
       await database.execute(
@@ -31,6 +31,7 @@ class AppDatabase {
         'CREATE TABLE workout_templates(id TEXT PRIMARY KEY, title TEXT NOT NULL, exercises_json TEXT NOT NULL, updated_at INTEGER NOT NULL, is_archived INTEGER NOT NULL DEFAULT 0, is_favorite INTEGER NOT NULL DEFAULT 0)',
       );
       await database.execute(_createBodyWeightEntries);
+      await database.execute(_createAppPreferences);
     },
     onUpgrade: (database, oldVersion, _) async {
       if (oldVersion < 2) {
@@ -79,9 +80,19 @@ class AppDatabase {
       if (oldVersion < 8) {
         await database.execute(_createBodyWeightEntries);
       }
+      if (oldVersion < 9) {
+        await database.execute(_createAppPreferences);
+      }
     },
   );
 }
+
+/// Small, durable app state that is neither training data nor a user profile:
+/// whether onboarding has run, which path the person chose, and anything else
+/// of that shape. A key-value table keeps such flags from each becoming a
+/// schema migration of their own.
+const _createAppPreferences =
+    'CREATE TABLE app_preferences(key TEXT PRIMARY KEY, value TEXT NOT NULL)';
 
 /// Body weight is a time series, not a profile field.
 ///

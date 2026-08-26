@@ -44,26 +44,45 @@ class _BodyMapState extends State<BodyMap> {
           );
         }
         final paths = snapshot.data!;
-        return AspectRatio(
-          aspectRatio: paths.viewBox.width / paths.viewBox.height,
-          child: LayoutBuilder(
-            builder: (context, constraints) => GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapUp: widget.onSelected == null
-                  ? null
-                  : (details) => _handleTap(details, paths, constraints),
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: _BodyMapPainter(
-                    paths: paths,
-                    coverage: widget.coverage,
-                    selected: widget.selected,
-                    silhouetteColor: scheme.onSurface.withValues(alpha: .07),
-                    restColor: scheme.onSurface.withValues(alpha: .13),
-                    activeColor: _accent,
-                    outlineColor: scheme.surface,
+        // A lighter plate behind the figure: on the dark page the illustration's
+        // own greys sat too close to the background for the body to read as a
+        // shape at all.
+        final plate = Color.lerp(scheme.surface, scheme.onSurface, .13)!;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: plate,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: AspectRatio(
+              aspectRatio: paths.viewBox.width / paths.viewBox.height,
+              child: LayoutBuilder(
+                builder: (context, constraints) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: widget.onSelected == null
+                      ? null
+                      : (details) => _handleTap(details, paths, constraints),
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _BodyMapPainter(
+                        paths: paths,
+                        coverage: widget.coverage,
+                        selected: widget.selected,
+                        // The body itself sits clearly above its plate rather
+                        // than dissolving into it.
+                        silhouetteColor: Color.lerp(
+                          plate,
+                          scheme.onSurface,
+                          .1,
+                        )!,
+                        restColor: Color.lerp(plate, scheme.onSurface, .3)!,
+                        activeColor: _accent,
+                        outlineColor: plate,
+                      ),
+                      size: Size.infinite,
+                    ),
                   ),
-                  size: Size.infinite,
                 ),
               ),
             ),
@@ -186,7 +205,9 @@ class BodyMapLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final rest = scheme.onSurface.withValues(alpha: .13);
+    // Mirrors the painter's rest colour so the legend describes the actual map.
+    final plate = Color.lerp(scheme.surface, scheme.onSurface, .13)!;
+    final rest = Color.lerp(plate, scheme.onSurface, .3)!;
     return Row(
       children: [
         Text(

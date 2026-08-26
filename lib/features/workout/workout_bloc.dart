@@ -23,6 +23,31 @@ class WorkoutStartedFromTemplate extends WorkoutEvent {
   final WorkoutTemplate template;
 }
 
+/// Starts a session from a planned set of catalogue exercises.
+///
+/// Each entry pairs a catalogue exercise with the sets and repetitions planned
+/// for it, so the session opens already laid out instead of empty.
+class WorkoutStartedFromPlan extends WorkoutEvent {
+  const WorkoutStartedFromPlan({required this.title, required this.entries});
+
+  final String title;
+  final List<PlannedWorkoutEntry> entries;
+}
+
+class PlannedWorkoutEntry {
+  const PlannedWorkoutEntry({
+    required this.exercise,
+    required this.setCount,
+    required this.repetitions,
+    this.notes = '',
+  });
+
+  final Exercise exercise;
+  final int setCount;
+  final int repetitions;
+  final String notes;
+}
+
 class WorkoutRenamed extends WorkoutEvent {
   const WorkoutRenamed(this.title);
   final String title;
@@ -140,6 +165,11 @@ class WorkoutFinished extends WorkoutEvent {
   const WorkoutFinished();
 }
 
+/// Permanently removes the active draft without adding it to workout history.
+class WorkoutDiscarded extends WorkoutEvent {
+  const WorkoutDiscarded();
+}
+
 class WorkoutState {
   const WorkoutState({
     this.session,
@@ -150,6 +180,7 @@ class WorkoutState {
     this.focusedSetId,
     this.focusSequence = 0,
     this.message,
+    this.completionSequence = 0,
   });
 
   final WorkoutSession? session;
@@ -160,6 +191,11 @@ class WorkoutState {
   final String? focusedSetId;
   final int focusSequence;
   final String? message;
+
+  /// Increments only when a session is finished, never when one is discarded.
+  /// Both leave the bloc holding no session, so this is what tells them apart
+  /// to anything watching from outside.
+  final int completionSequence;
 
   bool get hasActiveSession => session?.isActive ?? false;
 
@@ -174,6 +210,7 @@ class WorkoutState {
     int? focusSequence,
     String? message,
     bool clearMessage = false,
+    int? completionSequence,
   }) => WorkoutState(
     session: clearSession ? null : session ?? this.session,
     isLoading: isLoading ?? this.isLoading,
@@ -184,6 +221,7 @@ class WorkoutState {
     focusedSetId: focusedSetId ?? this.focusedSetId,
     focusSequence: focusSequence ?? this.focusSequence,
     message: clearMessage ? null : message ?? this.message,
+    completionSequence: completionSequence ?? this.completionSequence,
   );
 }
 
@@ -192,6 +230,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     on<WorkoutRestored>(_restore);
     on<WorkoutStarted>(_start);
     on<WorkoutStartedFromTemplate>(_startFromTemplate);
+    on<WorkoutStartedFromPlan>(_startFromPlan);
     on<WorkoutRenamed>(_rename);
     on<WorkoutExerciseAdded>(_addExercise);
     on<WorkoutExercisesAdded>(_addExercises);
@@ -207,6 +246,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     on<WorkoutSetCompletionToggled>(_toggleSet);
     on<WorkoutSetRemoved>(_removeSet);
     on<WorkoutFinished>(_finish);
+    on<WorkoutDiscarded>(_discard);
   }
 
   final WorkoutRepository _repository;
@@ -293,6 +333,48 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
       WorkoutSession(
         id: _newId(),
         title: event.template.title,
+        startedAt: DateTime.now(),
+        exercises: exercises,
+      ),
+      emit,
+    );
+  }
+
+  Future<void> _startFromPlan(
+    WorkoutStartedFromPlan event,
+    Emitter<WorkoutState> emit,
+  ) async {
+    if (state.hasActiveSession || event.entries.isEmpty) return;
+    final exercises = event.entries.indexed
+        .map((item) {
+          final entry = item.$2;
+          // A plan proposes the shape of the work, not the load. Repetitions
+          // are laid out so the lifter can see the intent, while the weight
+          // stays theirs to fill in during the session.
+          final sets = List.generate(
+            entry.setCount,
+            (position) => WorkoutSet(
+              id: _newId(),
+              exerciseId: entry.exercise.id,
+              position: position,
+              repetitions: entry.repetitions,
+            ),
+            growable: false,
+          );
+          return WorkoutExercise(
+            id: _newId(),
+            exerciseId: entry.exercise.id,
+            name: entry.exercise.name,
+            position: item.$1,
+            notes: entry.notes,
+            sets: sets,
+          );
+        })
+        .toList(growable: false);
+    await _save(
+      WorkoutSession(
+        id: _newId(),
+        title: _normalizedTitle(event.title) ?? 'Planned session',
         startedAt: DateTime.now(),
         exercises: exercises,
       ),
@@ -764,7 +846,27 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     final active = state.session;
     if (active == null) return;
     await _repository.save(active.copyWith(completedAt: DateTime.now()));
-    emit(const WorkoutState());
+    emit(WorkoutState(completionSequence: state.completionSequence + 1));
+  }
+
+  Future<void> _discard(
+    WorkoutDiscarded event,
+    Emitter<WorkoutState> emit,
+  ) async {
+    final active = state.session;
+    if (active == null) return;
+    emit(state.copyWith(isSaving: true, clearMessage: true));
+    try {
+      await _repository.deleteSession(active.id);
+      emit(WorkoutState(completionSequence: state.completionSequence));
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isSaving: false,
+          message: 'This workout could not be discarded.',
+        ),
+      );
+    }
   }
 
   Future<void> _save(WorkoutSession session, Emitter<WorkoutState> emit) async {

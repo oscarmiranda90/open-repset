@@ -1,0 +1,3 @@
+// Google's public iOS sample App ID keeps development and community builds
+// launchable. OfficialAds.xcconfig, when present, overrides this value.
+REPSET_ADMOB_IOS_APP_ID=ca-app-pub-3940256099942544~1458002511

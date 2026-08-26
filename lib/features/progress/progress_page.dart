@@ -4,7 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/body_weight.dart';
 import '../../domain/relative_strength_service.dart';
 import '../../domain/training_analytics.dart';
+import '../../domain/training_report.dart';
+import '../../domain/workout_repository.dart';
 import 'progress_bloc.dart';
+import 'training_report_sheet.dart';
 
 const _accent = Color(0xffd7ff4f);
 
@@ -16,6 +19,21 @@ class ProgressPage extends StatelessWidget {
   const ProgressPage({super.key, this.onBack});
 
   final VoidCallback? onBack;
+
+  Future<void> _openTrainingReport(BuildContext context) =>
+      showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => TrainingReportSheet(
+          builder: TrainingReportBuilder(
+            workouts: context.read<WorkoutRepository>(),
+            analytics: context.read<TrainingAnalyticsRepository>(),
+            bodyWeight: context.read<BodyWeightRepository>(),
+          ),
+        ),
+      );
 
   @override
   Widget build(
@@ -55,7 +73,16 @@ class ProgressPage extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.circle, size: 10, color: _accent),
+                TextButton.icon(
+                  key: const Key('progress-share-training-report'),
+                  onPressed: () => _openTrainingReport(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _accent,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(Icons.ios_share_rounded, size: 17),
+                  label: const Text('Report'),
+                ),
               ],
             ),
             const SizedBox(height: 20),

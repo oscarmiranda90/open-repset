@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repset/app/repset_app.dart';
+import 'package:repset/domain/app_preferences.dart';
 
 void main() {
   testWidgets('shows the portfolio home screen', (tester) async {
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pump();
 
     expect(find.byKey(const Key('home-templates-tile')), findsOneWidget);
@@ -15,10 +18,23 @@ void main() {
   testWidgets('opens the debug animation lab and replays every demo', (
     tester,
   ) async {
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('animation-lab-tab')));
+    // The lab moved inside settings, so reaching it now takes two steps.
+    await tester.tap(find.byKey(const Key('settings-tab')));
+    await tester.pumpAndSettle();
+    // Settings has grown past one screen, so the developer section has to be
+    // scrolled to before it can be tapped.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('settings-animation-lab')),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-animation-lab')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('animation-lab')), findsOneWidget);
@@ -61,7 +77,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.text('Begin training'));
     await tester.pump();
@@ -85,7 +103,9 @@ void main() {
   });
 
   testWidgets('saves a template while finishing a workout', (tester) async {
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Begin training'));
@@ -142,7 +162,9 @@ void main() {
   testWidgets('reaches templates and progress from the home tiles', (
     tester,
   ) async {
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pumpAndSettle();
 
     // Both surfaces left the dock, so the tiles are the only way in — and the
@@ -164,7 +186,9 @@ void main() {
   });
 
   testWidgets('shows a finished workout in history', (tester) async {
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Begin training'));
@@ -185,13 +209,79 @@ void main() {
     expect(find.text("Today's Workout"), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('cancels an active workout without saving it', (tester) async {
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Begin training'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('finish-workout-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('discard-workout-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-discard-workout-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-progress-tile')), findsOneWidget);
+    expect(find.text('Resume'), findsNothing);
+    await tester.tap(find.byKey(const Key('history-tab')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Your completed workouts will appear here.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('creates and adds a custom exercise from the workout picker', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Begin training'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-exercise-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('create-custom-exercise-button')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('custom-exercise-name-field')),
+      'Odd machine press',
+    );
+    await tester.tap(find.byKey(const Key('custom-exercise-category-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Upper body').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('custom-exercise-target-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chest').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('custom-exercise-equipment-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Barbell').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('save-custom-exercise-button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('picker-add-selected')));
+    await tester.pumpAndSettle();
+    expect(find.text('Odd machine press'), findsOneWidget);
+  });
+
   testWidgets('logs reps with an elevated RPE badge', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const RepSetApp());
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
     await tester.pump(const Duration(milliseconds: 100));
 
     await tester.tap(find.text('Begin training'));
@@ -344,5 +434,65 @@ void main() {
     );
     expect(tester.widget<TextField>(inheritedRepsField).controller!.text, '8');
     expect(find.text('1600 kg'), findsOneWidget);
+  });
+
+  testWidgets('advances set fields and completes a set from the keyboard', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepSetApp(appPreferences: MemoryAppPreferencesRepository.onboarded()),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Begin training'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('add-exercise-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(
+      find.byKey(const Key('picker-exercise-barbell-bench-press')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('picker-add-selected')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('add-set-0')));
+    await tester.pumpAndSettle();
+
+    final firstLoad = find.descendant(
+      of: find.byKey(const Key('set-load-0-0')),
+      matching: find.byType(TextField),
+    );
+    final firstReps = find.descendant(
+      of: find.byKey(const Key('set-reps-0-0')),
+      matching: find.byType(TextField),
+    );
+    final secondLoad = find.descendant(
+      of: find.byKey(const Key('set-load-0-1')),
+      matching: find.byType(TextField),
+    );
+
+    expect(
+      tester.widget<TextField>(firstLoad).textInputAction,
+      TextInputAction.next,
+    );
+    expect(
+      tester.widget<TextField>(firstReps).textInputAction,
+      TextInputAction.next,
+    );
+
+    await tester.tap(firstLoad);
+    await tester.enterText(firstLoad, '60');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    expect(tester.widget<TextField>(firstReps).focusNode!.hasFocus, isTrue);
+
+    await tester.enterText(firstReps, '10');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byKey(const Key('rest-timer-0-0')), findsOneWidget);
+    expect(tester.widget<TextField>(secondLoad).focusNode!.hasFocus, isTrue);
   });
 }

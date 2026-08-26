@@ -34,11 +34,16 @@ migrate_working_dir/
 /coverage/
 
 # Local configuration and credentials — never commit these to a public repo.
+# dart_defines/ holds official build origins: not secrets, but the public
+# repository must carry no default RepSet production origin.
+dart_defines/
 .env
+ios/Flutter/OfficialAds.xcconfig
 .env.*
 !.env.example
 .dev.vars
 .wrangler/
+.asc/
 .agents/
 .claude/
 *.pem
@@ -48,6 +53,9 @@ migrate_working_dir/
 *.jks
 service-account*.json
 firebase-adminsdk-*.json
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+ios/Runner/Runner.entitlements
 
 # Symbolication related
 app.*.symbols
@@ -60,6 +68,13 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/.kotlin/
+.vscode/
+
+# App Store deliverables and design iterations live with private operations,
+# not in the open-source app repository.
+screenshots/
+assets/images/[1-5].png
+ios/build/
 .agents/skills/brandkit/SKILL.md
 .agents/skills/design-taste-frontend/SKILL.md
 .agents/skills/design-taste-frontend-v1/SKILL.md

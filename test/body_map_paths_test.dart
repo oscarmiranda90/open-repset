@@ -48,6 +48,54 @@ void main() {
     }
   });
 
+  test('covers both views of the figure', () async {
+    final paths = await BodyMapLoader.load(bundle: rootBundle);
+    final midline = paths.viewBox.center.dx;
+
+    // The asset places the rear view left of centre and the front view right of
+    // it. A group that only ever parsed on one side means the other view is
+    // missing from the map.
+    final leftGroups = paths.muscles.entries
+        .where((entry) => entry.value.getBounds().center.dx < midline)
+        .map((entry) => entry.key)
+        .toSet();
+    final rightGroups = paths.muscles.entries
+        .where((entry) => entry.value.getBounds().center.dx >= midline)
+        .map((entry) => entry.key)
+        .toSet();
+
+    expect(leftGroups, isNotEmpty, reason: 'rear view produced no muscles');
+    expect(rightGroups, isNotEmpty, reason: 'front view produced no muscles');
+  });
+
+  test('gives the back real area, not just the traps', () async {
+    final paths = await BodyMapLoader.load(bundle: rootBundle);
+    final back = paths.muscles[MuscleGroup.back]!.getBounds();
+    final chest = paths.muscles[MuscleGroup.chest]!.getBounds();
+
+    // Treating the SVG's `back` group as a container once hid every lat path,
+    // leaving only the traps — a sliver next to the chest.
+    expect(
+      back.height,
+      greaterThan(chest.height * .5),
+      reason: 'back collapsed to $back against a chest of $chest',
+    );
+  });
+
+  test('keeps the head visible as part of the silhouette', () async {
+    final paths = await BodyMapLoader.load(bundle: rootBundle);
+    final bodyTop = paths.muscles.values
+        .map((path) => path.getBounds().top)
+        .reduce((a, b) => a < b ? a : b);
+    final silhouetteTop = paths.silhouette
+        .map((path) => path.getBounds().top)
+        .reduce((a, b) => a < b ? a : b);
+
+    // The head sits above every muscle, so a silhouette that starts no higher
+    // than the muscles means it was dropped.
+    expect(silhouetteTop, lessThan(bodyTop));
+  });
+
   test('caches the parse across calls', () async {
     final first = await BodyMapLoader.load(bundle: rootBundle);
     final second = await BodyMapLoader.load(bundle: rootBundle);

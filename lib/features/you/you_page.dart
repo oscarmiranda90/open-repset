@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/account/account_service.dart';
 import '../../core/motion/repset_motion.dart';
 import '../../domain/body_weight.dart';
 import '../progress/body_weight_bloc.dart';
 import '../progress/progress_bloc.dart';
 import 'body_weight_chart.dart';
+import 'account_card.dart';
 import 'muscle_coverage_section.dart';
 
 const _accent = Color(0xffd7ff4f);
@@ -16,7 +18,9 @@ const _accent = Color(0xffd7ff4f);
 /// Progress answers "what did I do". You answers "what is my body doing", so
 /// body weight is owned here rather than shared between both surfaces.
 class YouPage extends StatelessWidget {
-  const YouPage({super.key});
+  const YouPage({super.key, this.accountService});
+
+  final AccountService? accountService;
 
   @override
   Widget build(BuildContext context) =>
@@ -58,6 +62,13 @@ class YouPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 26),
+                if (accountService != null) ...[
+                  RepSetEntrance(
+                    delay: const Duration(milliseconds: 25),
+                    child: AccountCard(service: accountService!),
+                  ),
+                  const SizedBox(height: 30),
+                ],
                 RepSetEntrance(child: _WeightHeadline(state: state)),
                 if (state.entries.length > 1) ...[
                   const SizedBox(height: 26),

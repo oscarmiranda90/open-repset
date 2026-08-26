@@ -51,6 +51,14 @@ class DemoExerciseRepository implements ExerciseRepository {
   Future<List<Exercise>> refresh(String languageCode) async => _exercises;
 
   @override
+  Future<void> saveCustom(String languageCode, Exercise exercise) async {
+    _exercises = [
+      ..._exercises.where((item) => item.id != exercise.id),
+      exercise,
+    ];
+  }
+
+  @override
   Future<void> setFavorite(
     String exerciseId, {
     required bool isFavorite,

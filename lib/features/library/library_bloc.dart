@@ -40,6 +40,11 @@ class LibraryFavoriteToggled extends LibraryEvent {
   final Exercise exercise;
 }
 
+class LibraryCustomExerciseCreated extends LibraryEvent {
+  const LibraryCustomExerciseCreated(this.exercise);
+  final Exercise exercise;
+}
+
 class LibraryState {
   const LibraryState({
     this.exercises = const [],
@@ -172,6 +177,7 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
       (event, emit) => emit(state.copyWith(onlyFavorites: event.onlyFavorites)),
     );
     on<LibraryFavoriteToggled>(_toggleFavorite);
+    on<LibraryCustomExerciseCreated>(_createCustomExercise);
   }
 
   final ExerciseRepository _repository;
@@ -227,5 +233,25 @@ class LibraryBloc extends Bloc<LibraryEvent, LibraryState> {
             .toList(growable: false),
       ),
     );
+  }
+
+  Future<void> _createCustomExercise(
+    LibraryCustomExerciseCreated event,
+    Emitter<LibraryState> emit,
+  ) async {
+    try {
+      await _repository.saveCustom(state.languageCode, event.exercise);
+      emit(
+        state.copyWith(
+          exercises: [
+            ...state.exercises.where((item) => item.id != event.exercise.id),
+            event.exercise,
+          ],
+          clearMessage: true,
+        ),
+      );
+    } catch (_) {
+      emit(state.copyWith(message: 'This custom exercise could not be saved.'));
+    }
   }
 }

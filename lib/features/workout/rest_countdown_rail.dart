@@ -102,6 +102,9 @@ class _RestCountdownRailState extends State<RestCountdownRail> {
   @override
   void dispose() {
     _ticker?.cancel();
+    // A rest belongs to its active workout. Once that workout is finished or
+    // discarded, its scheduled background alert must not survive on the device.
+    unawaited(RestNotificationService.cancel(_notificationKey));
     super.dispose();
   }
 

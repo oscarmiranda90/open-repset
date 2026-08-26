@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.0.1+1
+version: 1.2.0+1
 
 environment:
   sdk: ^3.12.1
@@ -37,14 +37,23 @@ dependencies:
   flutter_bloc: ^9.1.1
   sqflite: ^2.4.3
   path: ^1.9.1
+  firebase_core: ^3.14.0
+  firebase_auth: ^5.5.1
+  google_sign_in: ^6.3.0
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.6
   purchases_flutter: ^10.9.1
   cached_network_image: ^3.4.1
   http: ^1.6.0
   audioplayers: ^6.4.0
+  keyboard_actions: ^5.0.2
+  url_launcher: ^6.3.2
+  share_plus: ^13.3.0
   flutter_local_notifications: ^22.3.0
   timezone: ^0.11.1
   # Parses the body illustration's group structure for the muscle map.
   xml: ^6.6.1
+  google_mobile_ads: ^9.1.0
 
 dev_dependencies:
   flutter_test:
@@ -92,6 +101,8 @@ flutter:
     - assets/sounds/alarmEnd.mp3
     - assets/icon/brand_mark.png
     - assets/images/bodymale.svg
+    - assets/images/auth/google_logo.webp
+    - assets/images/auth/apple_sign.webp
 
   # To add assets to your application, add an assets section, like this:
   # assets:

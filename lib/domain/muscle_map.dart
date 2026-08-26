@@ -9,10 +9,9 @@ library;
 /// muscle from ever lighting up.
 enum MuscleGroup {
   chest('Chest', ['pecs']),
-  // The illustration has no separate lats group, so back work shades the traps
-  // region — the only back musculature it draws. Mapping it to nothing would
-  // hide back training entirely, which is the worse error.
-  back('Back', ['traps']),
+  // `back` holds the lat paths of the rear view; traps join it because the
+  // catalogue routes trap work here and the two read as one region.
+  back('Back', ['back', 'traps']),
   // Shoulders are drawn once per view, so one group shades both.
   shoulders('Shoulders', ['shoulders', 'back_shoulders']),
   biceps('Biceps', ['biceps']),

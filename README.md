@@ -55,6 +55,12 @@ flutter run
 Without `REPSET_CATALOGUE_ORIGIN`, the app uses the demo exercise data. This is
 intentional: a clone should not consume RepSet's production media service.
 
+Community builds also have official advertising disabled. AdMob is created
+only when protected release configuration explicitly enables it and supplies
+RepSet's public app/ad-unit identifiers. Forks show no ads and never send ad
+requests unless their maintainer deliberately implements and configures their
+own monetization.
+
 ## Before publishing or contributing
 
 Never commit credentials, service accounts, signing keys, `.env` files,
@@ -78,10 +84,10 @@ motion studies. It is compiled out of profile and release builds.
 - [DESIGN.md](DESIGN.md) — visual and motion rules
 - [ARCHITECTURE_REPORT.md](ARCHITECTURE_REPORT.md) — scope, architecture, and roadmap
 - [OPEN_SOURCE_OPERATING_MODEL.md](OPEN_SOURCE_OPERATING_MODEL.md) — public-repo, release, media, and service rules
+- [OFFICIAL_SERVICES.md](OFFICIAL_SERVICES.md) — official Firebase Auth and RevenueCat boundary
 - [FEATURE_COMPARISON.md](FEATURE_COMPARISON.md) — legacy/remaster feature comparison
 - [REBUILD_PLAN.md](REBUILD_PLAN.md) — implementation phases and acceptance criteria
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — open-source attribution
-- [OPEN_SOURCE_OPERATING_MODEL.md](OPEN_SOURCE_OPERATING_MODEL.md) — rules for public releases and official services
 - [TRADEMARKS.md](TRADEMARKS.md) — branding rules for forks
 
 ## License
